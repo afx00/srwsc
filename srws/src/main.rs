@@ -1,4 +1,5 @@
 mod config;
+mod error;
 mod http_server;
 
 use std::process;

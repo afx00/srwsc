@@ -8,6 +8,16 @@ pub const DEFAULT_ADDR: &str = "0.0.0.0:1417";
 pub const DEFAULT_STORAGE: &str = "/tmp/srwc";
 pub const BUFFER_SIZE: usize = 8;
 
+pub const ACK_MESSAGE: &str              = "ACK";
+pub const PREPARE_TRANSFER_MESSAGE: &str = "prepare transfer file";
+pub const CANNOT_FIND_FILE_MESSAGE: &str = "cannot find file";
+pub const REMOVED_OK_MESSAGE: &str       = "removed ok";
+pub const REMOVED_NOK_MESSAGE: &str      = "removed nok";
+
+pub const GOOD: &str = "OK";
+#[allow(dead_code)]
+pub const BAD: &str  = "NOK";
+
 
 #[derive(Debug)]
 pub enum ServerType {
