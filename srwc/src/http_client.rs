@@ -11,6 +11,7 @@ use crate::config::{ACK_MESSAGE,
                     REMOVED_NOK_MESSAGE,
                     GOOD};
 use crate::error::{SrwscError, ErrorCode};
+use crate::misc;
 
 use encoding::{Encoding, EncoderTrap};
 use encoding::all::ASCII;
@@ -21,40 +22,7 @@ use std::io::prelude::*;
 use std::fs;
 use std::fs::File;
 use regex::Regex;
-use console::{Term, style};
-
-fn srwc_prompt() {
-    let term = Term::stdout();
-    term.write_str("SRWC> ").unwrap();
-}
-
-fn help(){
-    println!("{}", style("Available SRWC commands:").magenta());
-    println!("{} {}\t-> {}", style("get").green(), style("\"filename\"").blue(), style("Download file from server").cyan());
-    println!("{} {}\t-> {}", style("put").green(), style("\"filename\"").blue(), style("Upload file to server").cyan());
-    println!("{} {}\t-> {}", style("rm").green(), style("\"filename\"").blue(), style("Remove file in server").cyan());
-    println!("{}\t\t-> {}", style("ls").green(), style("Show files in server").cyan());
-    println!("{}\t\t-> {}", style("help").green(), style("Show available commands").cyan());
-    println!("{}\t\t-> {}", style("quit").green(), style("Quit SRWC").cyan());
-}
-
-fn ls_response(response: &String) -> Vec<ServerFile>{
-    let mut file_list: Vec<ServerFile> = Vec::new();
-    let file_name_regex: Regex = Regex::new(r"(.*)(?:\s\s\[.*\sbytes\][\n\r])").unwrap();
-    let file_size_regex: Regex = Regex::new(r"(\d+)(?:\sbytes\][\n\r])").unwrap();
-
-    for cp in file_name_regex.captures_iter(response).enumerate() {
-        let mut f = ServerFile::new();
-        f.name = String::from(&cp.1[1]);
-        file_list.push(f);
-    }
-
-    for (i, cap) in file_size_regex.captures_iter(response).enumerate() {
-        file_list[i].size = String::from(&cap[1]);
-    }
-
-    file_list
-}
+use console::style;
 
 fn encoded_message_size(cmd: &str) -> Result<Vec<u8>, SrwscError> {
     let mut message_size = cmd.len();
@@ -85,7 +53,6 @@ fn send_ack_message(stream: &mut TcpStream) {
 
 fn send_normal_message(msg: &str, stream: &mut TcpStream)
         -> Result<String, SrwscError> {
-    println!("send normal message");
     let mut buf = [0u8; BUFFER_SIZE];
     let send_msg_size = encoded_message_size(msg).unwrap();
     let send_msg = encoded_message(msg).unwrap();
@@ -298,23 +265,23 @@ fn ls_server(stream: &mut TcpStream) -> Result<String, SrwscError> {
     Ok(get_message(stream))
 }
 
-fn rm_server(stream: &mut TcpStream) -> Result<String, SrwscError> {
+fn rm_file(stream: &mut TcpStream) -> Result<String, SrwscError> {
     match get_message(stream).as_ref() {
         REMOVED_OK_MESSAGE => {
-            println!("[rm_server] Removed successfully");
+            println!("[rm_file] Removed successfully");
         },
         REMOVED_NOK_MESSAGE => {
-            println!("[rm_server] Removed unsuccessfully");
+            println!("[rm_file] Removed unsuccessfully");
             return Err(SrwscError::new(ErrorCode::ErrorRequest,
                                        String::from("Removed unsuccessflly")))
         },
         CANNOT_FIND_FILE_MESSAGE => {
-            println!("[rm_server] Could not file file");
+            println!("[rm_file] Could not file file");
             return Err(SrwscError::new(ErrorCode::NotExistFile,
                                        String::from("File not found")))
         },
         _ => {
-            println!("[rm_server] Unknown message");
+            println!("[rm_file] Unknown message");
             return Err(SrwscError::new(ErrorCode::ErrorRequest,
                                        String::from("Unknown message")))
         },
@@ -327,12 +294,11 @@ pub fn run(c: ClientConfig) {
         .expect("Could not connect to the server...");
     println!("Successful connection to server({})", style(&c.address).yellow());
     loop {
-        srwc_prompt();
+        misc::srwc_prompt();
         let cmd = std::io::stdin();
         for line in cmd.lock().lines() {
             let command = line.unwrap();
 
-            println!("go command");
             match send_normal_message(&command, &mut stream) {
                 Err(e) => {
                     println!("Error occured during sending command: {:?}", e);
@@ -352,7 +318,7 @@ pub fn run(c: ClientConfig) {
                     Err(err) => println!("An error occurred: {}", err),
                 }
             } else if command.starts_with("rm ") {
-                match rm_server(&mut stream) {
+                match rm_file(&mut stream) {
                     Ok(response) => println!("response: {}", response),
                     Err(err) => println!("An error occurred: {}", err),
                 }
@@ -361,7 +327,7 @@ pub fn run(c: ClientConfig) {
                     "ls" => {
                         match ls_server(&mut stream) {
                             Ok(response) => {
-                                let res = ls_response(&response);
+                                let res = misc::file_list_response(&response);
                                 println!("{}", style("Server files: ").magenta());
                                 for entry in res.iter() {
                                     println!("{}  [{} bytes]", style(&entry.name).green(),
@@ -371,7 +337,7 @@ pub fn run(c: ClientConfig) {
                             Err(err) => println!("{}", err),
                         }
                     },
-                    "help" => help(),
+                    "help" => misc::srwc_help(),
                     _ => println!("Unknown command: {}", command),
                 }
             }

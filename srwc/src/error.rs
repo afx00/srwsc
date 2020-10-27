@@ -1,4 +1,5 @@
 use std::fmt;
+use std::error::Error;
 
 pub struct SrwscError {
     code: ErrorCode,
@@ -26,6 +27,8 @@ impl fmt::Debug for SrwscError {
         )
     }
 }
+
+impl Error for SrwscError {}
 
 impl SrwscError {
     pub fn new(code: ErrorCode, message: String) -> Self {

@@ -9,10 +9,11 @@ use crate::config::{ACK_MESSAGE,
                     GOOD,
                     BAD};
 use crate::error::{SrwscError, ErrorCode};
+use crate::misc;
 
 use encoding::{Encoding, EncoderTrap};
 use encoding::all::ASCII;
-use std::net::{TcpListener, TcpStream, Shutdown};
+use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::io::BufWriter;
 use std::io::prelude::*;
@@ -23,7 +24,7 @@ use console::style;
 
 pub fn run(c: ServerConfig) {
     let listener = TcpListener::bind(&c.address.clone()).unwrap();
-    println!("Listening on addr: {}", style(&c.address).green());
+    println!("Listening on address: {}", style(&c.address).green());
     let mut children = vec![];
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -51,29 +52,6 @@ fn check_ack(mut ack_buf: &mut [u8]) -> Result<String, SrwscError> {
                                    String::from("ACK failed")));
     }
     Ok(String::from(GOOD))
-}
-
-fn check_file(file_name: &str, storage: &str) -> ServerFile {
-    let mut f = ServerFile::new();
-
-    for entry in fs::read_dir(storage).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if !path.is_dir() {
-            let fullpath = String::from(entry.path().to_string_lossy());
-            let filename = String::from(str::replace(&fullpath, storage, ""));
-
-            if &filename[1..] == file_name {
-                let file = File::open(&fullpath).unwrap();
-                f.size = file.metadata().unwrap().len();
-                f.name = file_name.to_string();
-                f.fullpath = fullpath;
-                break;
-            }
-        }
-    }
-
-    f
 }
 
 fn encoded_message_size(cmd: &str) -> Result<Vec<u8>, SrwscError> {
@@ -248,7 +226,7 @@ fn send_file_impl(fullpath: &str, file_size: u64, stream: &mut TcpStream)
 
 fn send_file(file_name: &str, storage: &str,
              stream: &mut TcpStream) -> String {
-    let file_info = check_file(file_name, storage);
+    let file_info = misc::check_file(file_name, storage);
     if file_info.size > 0 {
         println!("[send_file] File found");
         match send_normal_message(PREPARE_TRANSFER_MESSAGE, stream) {
@@ -285,7 +263,7 @@ fn receive_file(file_name: &str, storage: &str,
 fn remove_file(filename: &str, storage: &str, stream: &mut TcpStream) {
     println!("Not impl");
     let mut msg = String::new();
-    let f = check_file(filename, storage);
+    let f = misc::check_file(filename, storage);
     if f.size > 0 {
         println!("[remove_file] File found");
         match fs::remove_file(&f.fullpath) {
@@ -306,22 +284,7 @@ fn remove_file(filename: &str, storage: &str, stream: &mut TcpStream) {
 }
 
 fn ls_server(storage: &str, stream: &mut TcpStream) {
-    let mut msg = String::new();
-    for entry in fs::read_dir(storage).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-        if !path.is_dir() {
-            let fullpath = String::from(entry.path().to_string_lossy());
-            let filename = String::from(str::replace(&fullpath, storage, ""));
-            let file_name = &filename[1..];
-
-            let file = File::open(fullpath).unwrap();
-            let file_size = file.metadata().unwrap().len();
-            let file_info = format!("{}  [{} bytes]", file_name, file_size);
-            msg.push_str(&file_info);
-            msg.push('\n');
-        }
-    }
+    let mut msg = misc::get_file_list(storage);
     msg.push('\r');
 
     let _ = send_normal_message(&msg, stream);

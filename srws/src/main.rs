@@ -1,6 +1,8 @@
 mod config;
 mod error;
 mod http_server;
+mod grpc_server;
+mod misc;
 
 use std::process;
 use ace::App;
@@ -11,7 +13,13 @@ fn main() {
         Some(info) => {
             println!("{:?}", info);
             match &info.server_type {
-                config::ServerType::HTTP => http_server::run(info),
+                config::ServerType::HTTP => { http_server::run(info); },
+                config::ServerType::GRPC => {
+                    match grpc_server::run(info) {
+                        Err(e) => println!("Grpc Server error with : {}", e),
+                        _ => {},
+                    }
+                },
                 _ => println!("Not implement"),
             }
         },

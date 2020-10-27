@@ -14,10 +14,13 @@ pub const CANNOT_FIND_FILE_MESSAGE: &str = "cannot find file";
 pub const REMOVED_OK_MESSAGE: &str       = "removed ok";
 pub const REMOVED_NOK_MESSAGE: &str      = "removed nok";
 
+pub const GRPC_METADATA_FILENAME: &str  = "filename";
+
 pub const GOOD: &str = "OK";
 #[allow(dead_code)]
 pub const BAD: &str  = "NOK";
 
+pub const GRPC_URL_SCHEMA: &str = "http://";
 
 #[derive(Debug)]
 pub enum ServerType {
@@ -43,16 +46,19 @@ impl ClientConfig {
     }
 }
 
+#[derive(Debug)]
 pub struct ServerFile {
+    pub fullpath: String,
     pub name: String,
-    pub size: String,
+    pub size: u64,
 }
 
 impl ServerFile {
     pub fn new() -> Self {
         ServerFile {
+            fullpath: String::from(""),
             name: String::from(""),
-            size: String::from(""),
+            size: 0,
         }
     }
 }

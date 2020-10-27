@@ -14,6 +14,8 @@ pub const CANNOT_FIND_FILE_MESSAGE: &str = "cannot find file";
 pub const REMOVED_OK_MESSAGE: &str       = "removed ok";
 pub const REMOVED_NOK_MESSAGE: &str      = "removed nok";
 
+pub const GRPC_METADATA_FILENAME: &str  = "filename";
+
 pub const GOOD: &str = "OK";
 pub const BAD: &str  = "NOK";
 

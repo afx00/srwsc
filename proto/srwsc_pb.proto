@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package srwsc.pb;
+
+service Srwsc {
+    rpc Get(SrwscRequest) returns (stream FileStream) {}
+    rpc Put(stream FileStream) returns (SrwscResponse) {}
+    rpc Remove(SrwscRequest) returns (SrwscResponse) {}
+    rpc FileList(Empty) returns (SrwscResponse) {}
+}
+
+message Empty {}
+
+message SrwscRequest {
+    string filename = 1;
+}
+
+message SrwscResponse {
+    string message = 1;
+}
+
+message FileStream {
+    bytes data = 1;
+}

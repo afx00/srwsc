@@ -10,4 +10,10 @@ edition = "2018"
 ace = "0.2.0"
 encoding = "0.2"
 console = "0.5.0"
+tonic = {version="0.2.0",features = ["tls"]}
+tokio = {version="0.2.18",features = ["full"]}
+prost = "0.6.1"
+futures = "0.3"
 
+[build-dependencies]
+tonic-build = "0.2.0"
