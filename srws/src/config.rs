@@ -16,9 +16,6 @@ pub const REMOVED_NOK_MESSAGE: &str      = "removed nok";
 
 pub const GRPC_METADATA_FILENAME: &str  = "filename";
 
-pub const GOOD: &str = "OK";
-pub const BAD: &str  = "NOK";
-
 
 #[derive(Debug)]
 pub enum ServerType {

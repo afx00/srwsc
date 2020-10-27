@@ -3,13 +3,12 @@ extern crate regex;
 extern crate console;
 extern crate pbr;
 
-use crate::config::{ClientConfig, ServerFile, BUFFER_SIZE};
+use crate::config::{ClientConfig, BUFFER_SIZE};
 use crate::config::{ACK_MESSAGE,
                     PREPARE_TRANSFER_MESSAGE,
                     CANNOT_FIND_FILE_MESSAGE,
                     REMOVED_OK_MESSAGE,
-                    REMOVED_NOK_MESSAGE,
-                    GOOD};
+                    REMOVED_NOK_MESSAGE};
 use crate::error::{SrwscError, ErrorCode};
 use crate::misc;
 
@@ -21,26 +20,29 @@ use std::str;
 use std::io::prelude::*;
 use std::fs;
 use std::fs::File;
-use regex::Regex;
 use console::style;
 
-fn encoded_message_size(cmd: &str) -> Result<Vec<u8>, SrwscError> {
+fn encoded_message_size(cmd: &str)
+    -> Result<Vec<u8>, SrwscError> {
     let mut message_size = cmd.len();
     message_size = message_size + 1;
     let message_size_str = message_size.to_string();
-    let mut message_size_bytes = ASCII.encode(&message_size_str, EncoderTrap::Strict)
-                                      .map_err(|x| x.into_owned())
-                                      .unwrap();
+    let mut message_size_bytes = ASCII
+        .encode(&message_size_str, EncoderTrap::Strict)
+        .map_err(|x| x.into_owned())
+        .unwrap();
     message_size_bytes.push('\r' as u8);
 
     Ok(message_size_bytes)
 }
 
-fn encoded_message(cmd: &str) -> Result <Vec<u8>, SrwscError> {
+fn encoded_message(cmd: &str)
+    -> Result <Vec<u8>, SrwscError> {
     let message_str = cmd.to_string();
-    let mut message_bytes = ASCII.encode(&message_str, EncoderTrap::Strict)
-                                 .map_err(|x| x.into_owned())
-                                 .unwrap();
+    let mut message_bytes = ASCII
+        .encode(&message_str, EncoderTrap::Strict)
+        .map_err(|x| x.into_owned())
+        .unwrap();
     message_bytes.push('\r' as u8);
 
     Ok(message_bytes)
@@ -51,8 +53,9 @@ fn send_ack_message(stream: &mut TcpStream) {
     stream.write_all(&ack).unwrap();
 }
 
-fn send_normal_message(msg: &str, stream: &mut TcpStream)
-        -> Result<String, SrwscError> {
+fn send_normal_message(msg: &str,
+                       stream: &mut TcpStream)
+    -> Result<(), SrwscError> {
     let mut buf = [0u8; BUFFER_SIZE];
     let send_msg_size = encoded_message_size(msg).unwrap();
     let send_msg = encoded_message(msg).unwrap();
@@ -73,11 +76,14 @@ fn send_normal_message(msg: &str, stream: &mut TcpStream)
         return Err(e);
     }
 
-    Ok(String::from(GOOD))
+    Ok(())
 }
 
-fn decoded_message_len(mut msg: &mut [u8]) -> String {
-    let mut msg_len = str::from_utf8(&mut msg).unwrap().to_string();
+fn decoded_message_len(mut msg: &mut [u8])
+    -> String {
+    let mut msg_len = str::from_utf8(&mut msg)
+        .unwrap()
+        .to_string();
 
     let mut index = 0;
     for c in msg_len.chars() {
@@ -89,7 +95,9 @@ fn decoded_message_len(mut msg: &mut [u8]) -> String {
     msg_len
 }
 
-fn decoded_message(msg_len: String, stream: &mut TcpStream) -> String {
+fn decoded_message(msg_len: String,
+                   stream: &mut TcpStream)
+    -> String {
     let mut remaining_data = msg_len.parse::<i32>().unwrap();
     let mut msg: String = String::new();
     let mut buf = [0u8; BUFFER_SIZE];
@@ -119,7 +127,7 @@ fn get_message(stream: &mut TcpStream) -> String {
     msg
 }
 
-fn check_ack(mut buf: &mut [u8]) -> Result<String, SrwscError> {
+fn check_ack(mut buf: &mut [u8]) -> Result<(), SrwscError> {
     let ack_slice: &str = str::from_utf8(&mut buf).unwrap();
     let mut ack_str = ack_slice.to_string();
     let index: usize = ack_str.rfind('\r').unwrap();
@@ -128,10 +136,11 @@ fn check_ack(mut buf: &mut [u8]) -> Result<String, SrwscError> {
         return Err(SrwscError::new(ErrorCode::ErrorAck,
                                    String::from("ACK failed")));
     }
-    Ok(String::from(GOOD))
+    Ok(())
 }
 
-fn receive_file(file_name: &str, storage: &str,
+fn receive_file(file_name: &str,
+                storage: &str,
                 stream: &mut TcpStream) {
     println!("[receive_file] file_name = {}", file_name);
     let mut buf = [0u8; BUFFER_SIZE];
@@ -170,10 +179,14 @@ fn receive_file(file_name: &str, storage: &str,
     }
 }
 
-fn send_file(fullpath: &str, file_size: u64, stream: &mut TcpStream)
-        -> Result<String, SrwscError> {
-    let send_file_size = encoded_message(&file_size.to_string()).unwrap();
-    stream.write_all(&send_file_size).unwrap();
+fn send_file(fullpath: &str,
+             file_size: u64,
+             stream: &mut TcpStream)
+    -> Result<(), SrwscError> {
+    let send_file_size = encoded_message(&file_size.to_string())
+        .unwrap();
+    stream.write_all(&send_file_size)
+        .unwrap();
 
     let mut buf = [0u8; BUFFER_SIZE];
     stream.read(&mut buf).unwrap();
@@ -194,11 +207,13 @@ fn send_file(fullpath: &str, file_size: u64, stream: &mut TcpStream)
             _ => { break; }
         }
     }
-    Ok(String::from(GOOD))
+    Ok(())
 }
 
-fn download(command: &str, storage: &str, mut stream: &mut TcpStream)
-        -> Result<String, SrwscError> {
+fn download(command: &str,
+            storage: &str,
+            mut stream: &mut TcpStream)
+    -> Result<(), SrwscError> {
     match get_message(stream).as_ref() {
         CANNOT_FIND_FILE_MESSAGE => {
             println!("[download] Cannot transfer file");
@@ -216,11 +231,13 @@ fn download(command: &str, storage: &str, mut stream: &mut TcpStream)
                                        String::from("Unknown message")));
         },
     }
-    Ok(String::from(GOOD))
+    Ok(())
 }
 
-fn upload(command: &str, storage: &str, stream: &mut TcpStream)
-        -> Result<String, SrwscError> {
+fn upload(command: &str,
+          storage: &str,
+          stream: &mut TcpStream)
+    -> Result<(), SrwscError> {
     let filename = String::from(&command[4..]);
     println!("Try to upload as {}", filename);
 
@@ -261,11 +278,13 @@ fn upload(command: &str, storage: &str, stream: &mut TcpStream)
                         String::from("File not found")))
 }
 
-fn ls_server(stream: &mut TcpStream) -> Result<String, SrwscError> {
+fn ls_server(stream: &mut TcpStream)
+    -> Result<String, SrwscError> {
     Ok(get_message(stream))
 }
 
-fn rm_file(stream: &mut TcpStream) -> Result<String, SrwscError> {
+fn rm_file(stream: &mut TcpStream)
+    -> Result<(), SrwscError> {
     match get_message(stream).as_ref() {
         REMOVED_OK_MESSAGE => {
             println!("[rm_file] Removed successfully");
@@ -286,7 +305,7 @@ fn rm_file(stream: &mut TcpStream) -> Result<String, SrwscError> {
                                        String::from("Unknown message")))
         },
     }
-    Ok(String::from(GOOD))
+    Ok(())
 }
 
 pub fn run(c: ClientConfig) {
@@ -309,17 +328,17 @@ pub fn run(c: ClientConfig) {
 
             if command.starts_with("get ") {
                 match download(&command, &c.storage, &mut stream) {
-                    Ok(response) => println!("response: {}", response),
+                    Ok(_) => println!("Download is completed"),
                     Err(err) => println!("Download error: {}", err),
                 }
             } else if command.starts_with("put ") {
                 match upload(&command, &c.storage, &mut stream) {
-                    Ok(response) => println!("response: {}", response),
+                    Ok(_) => println!("Upload is completed"),
                     Err(err) => println!("An error occurred: {}", err),
                 }
             } else if command.starts_with("rm ") {
                 match rm_file(&mut stream) {
-                    Ok(response) => println!("response: {}", response),
+                    Ok(_) => println!("Remove is completed"),
                     Err(err) => println!("An error occurred: {}", err),
                 }
             } else {

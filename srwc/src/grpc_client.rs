@@ -6,52 +6,48 @@ extern crate console;
 
 use crate::config;
 use crate::config::ClientConfig;
-use crate::config::{ACK_MESSAGE,
-                    PREPARE_TRANSFER_MESSAGE,
-                    CANNOT_FIND_FILE_MESSAGE,
-                    REMOVED_OK_MESSAGE,
-                    REMOVED_NOK_MESSAGE,
-                    GOOD};
 use crate::error::{SrwscError, ErrorCode};
 use crate::misc;
 
 use pb::srwsc_client::SrwscClient;
-use pb::{FileStream, SrwscRequest, SrwscResponse};
+use pb::{FileStream, SrwscRequest};
 
 use std::io::prelude::*;
 use console::style;
 use std::fs::File;
-use prost::bytes::BufMut;
 use futures::stream;
 use tonic::metadata::MetadataValue;
 use std::io::BufWriter;
 
-async fn download(filename: &str, storage: &str,
+async fn download(filename: &str,
+                  storage: &str,
                   client: &mut SrwscClient<tonic::transport::Channel>)
                   -> Result<(), Box<dyn std::error::Error>> {
-    /*
     let mut fullname = String::from(storage);
     fullname.push_str("/");
     fullname.push_str(filename);
 
-    let mut buf = [0u8; config::BUFFER_SIZE];
+    let request = tonic::Request::new(
+        SrwscRequest {
+            filename: String::from(filename)
+        },
+    );
+
+    let mut stream = client
+        .get(request)
+        .await?
+        .into_inner();
 
     let mut file = BufWriter::new(File::create(fullname).unwrap());
-
-    while remaining_data > 0 {
-        match stream.read(&mut buf) {
-            Ok(n) => {
-                file.write(sbuf).unwrap();
-                file.flush().unwrap();
-            }
-            _ => { break; }
-        }
+    while let Some(file_stream) = stream.message().await? {
+        file.write(&file_stream.data).unwrap();
+        file.flush().unwrap();
     }
-     */
     Ok(())
 }
 
-async fn upload(filename: &str, storage: &str,
+async fn upload(filename: &str,
+                storage: &str,
                 client: &mut SrwscClient<tonic::transport::Channel>)
                 -> Result<(), Box<dyn std::error::Error>> {
     let file = misc::check_file(filename, storage);
@@ -94,7 +90,10 @@ async fn rm_file(filename: &str,
             filename: String::from(filename)
         },
     );
-    let response = client.remove(request).await?.into_inner();
+    let response = client
+        .remove(request)
+        .await?
+        .into_inner();
     println!("RESPONSE={:?}", response);
     Ok(())
 }
@@ -104,13 +103,17 @@ async fn ls_server(client: &mut SrwscClient<tonic::transport::Channel>)
     let request = tonic::Request::new(
         pb::Empty{},
     );
-    let response = client.file_list(request).await?.into_inner();
+    let response = client
+        .file_list(request)
+        .await?
+        .into_inner();
     println!("RESPONSE={:?}", response);
     Ok(response.message)
 }
 
 #[tokio::main]
-pub async fn run(c: ClientConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(c: ClientConfig)
+    -> Result<(), Box<dyn std::error::Error>> {
     let mut addr = String::from(config::GRPC_URL_SCHEMA);
     addr.push_str(&c.address.to_string());
     println!("Connecting on address: {}", style(&addr).green());
@@ -165,5 +168,4 @@ pub async fn run(c: ClientConfig) -> Result<(), Box<dyn std::error::Error>> {
             break;
         }
     }
-    Ok(())
 }

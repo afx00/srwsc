@@ -15,11 +15,6 @@ pub const REMOVED_OK_MESSAGE: &str       = "removed ok";
 pub const REMOVED_NOK_MESSAGE: &str      = "removed nok";
 
 pub const GRPC_METADATA_FILENAME: &str  = "filename";
-
-pub const GOOD: &str = "OK";
-#[allow(dead_code)]
-pub const BAD: &str  = "NOK";
-
 pub const GRPC_URL_SCHEMA: &str = "http://";
 
 #[derive(Debug)]

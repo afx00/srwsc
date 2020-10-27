@@ -15,20 +15,6 @@ fn main() {
             match &info.server_type {
                 config::ServerType::HTTP => { http_client::run(info); },
                 config::ServerType::GRPC => {
-                    /*
-                    println!("go grpc");
-                    let mut runtime = runtime::Builder::new()
-                        .thread_name("srwc")
-                        .threaded_scheduler()
-                        .enable_all()
-                        .core_threads(8)
-                        .max_threads(9)
-                        .build()
-                        .unwrap();
-
-                    let _ = runtime.block_on(grpc_client::run(info));
-                    let _ = futures::executor::block_on(grpc_client::run(info));
-                     */
                     match grpc_client::run(info) {
                         Err(e) => println!("Grpc Client error with: {}", e),
                         _ => {},

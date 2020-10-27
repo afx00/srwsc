@@ -14,7 +14,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::io::prelude::*;
-use futures::{stream, StreamExt};
+use futures::StreamExt;
 use tokio::sync::mpsc;
 
 static mut STORAGE: &str = config::DEFAULT_STORAGE;
@@ -46,7 +46,8 @@ fn send_file(filename: &str)
     msg
 }
 
-async fn receive_file(filename: &str, mut stream: Streaming<FileStream>)
+async fn receive_file(filename: &str,
+                      mut stream: Streaming<FileStream>)
     -> String {
     let mut fullname = String::new();
     unsafe  {
@@ -54,12 +55,15 @@ async fn receive_file(filename: &str, mut stream: Streaming<FileStream>)
     }
     fullname.push_str("/");
     fullname.push_str(&filename);
-    println!("enter receive_file");
-    let mut file_buffer = BufWriter::new(File::create(fullname).unwrap());
+    let mut file_buffer = BufWriter::new(
+        File::create(fullname).unwrap());
 
     while let Some(msg) = stream.next().await {
-        let msg = msg.unwrap();
-        let _ = file_buffer.write(&msg.data).unwrap();
+        let msg = msg
+            .unwrap();
+        let _ = file_buffer
+            .write(&msg.data)
+            .unwrap();
     }
 
     String::from("Ok")
@@ -94,17 +98,15 @@ pub struct ServerImpl {}
 
 #[tonic::async_trait]
 impl Srwsc for ServerImpl {
-
-    type ServerFileStream = mpsc::Receiver<Result<FileStream, Status>>;
+    type GetStream = mpsc::Receiver<Result<FileStream, Status>>;
 
     async fn get(&self, request: Request<SrwscRequest>)
-        -> Result<Response<Self::ServerFileStream>, Status> {
+        -> Result<Response<Self::GetStream>, Status> {
         let filename = &request.get_ref().filename;
         let file_streams = send_file(filename);
         let (mut tx, rx) = mpsc::channel(8);
         tokio::spawn(async move {
             for file_stream in &file_streams[..] {
-                println!("  => send {:?}", file_stream);
                 tx.send(Ok(file_stream.clone())).await.unwrap();
             }
 
